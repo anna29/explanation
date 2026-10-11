@@ -1,0 +1,573 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>From Photo to Point</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column of five numbered stages; each stage = short text + one working visual. Stages are a real sequence (the model's pipeline), so they are numbered. */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --ink:#16202B; --muted:#566271; --line:#D3DAE2;
+  --banana:#D99A00; --apple:#1D8A78; --probe:#3552F2; --probe-soft:#3552F21f;
+  --display:"Bricolage Grotesque","Arial Black",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F141A; --surface:#171E27; --ink:#E7ECF1; --muted:#9AA6B3; --line:#2B3541;
+  --banana:#F2B92A; --apple:#3DBBA5; --probe:#8297FF; --probe-soft:#8297FF26; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0F141A; --surface:#171E27; --ink:#E7ECF1; --muted:#9AA6B3; --line:#2B3541;
+  --banana:#F2B92A; --apple:#3DBBA5; --probe:#8297FF; --probe-soft:#8297FF26; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:17px/1.6 var(--body);padding-inline:20px;padding-block:0 64px}
+.wrap{max-width:1080px;margin:0 auto}
+header{padding-block:48px 24px;display:grid;gap:14px;max-width:760px}
+.eyebrow{font:600 13px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--probe)}
+h1{font:800 clamp(2.2rem,5.6vw,3.9rem)/1.02 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.lead{font-size:1.15rem;color:var(--muted);margin:0;max-width:62ch}
+.chain{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:600 13px/1 var(--mono);color:var(--muted);margin-top:6px}
+.chain span{background:var(--surface);border:1px solid var(--line);padding:8px 10px;border-radius:6px;color:var(--ink)}
+.step{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:36px;padding-block:44px;border-top:1px solid var(--line);align-items:start}
+@media (max-width:860px){.step{grid-template-columns:1fr;gap:20px}}
+.txt{display:grid;gap:12px;min-width:0}
+.num{font:800 15px/1 var(--mono);color:var(--probe)}
+h2{font:700 clamp(1.5rem,3vw,2.05rem)/1.12 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.txt p{margin:0;max-width:60ch}
+.say{border-left:3px solid var(--probe);padding:6px 0 6px 14px;color:var(--ink);font-style:italic}
+.note{font-size:.88rem;color:var(--muted)}
+.vis{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:520px){.pair{grid-template-columns:1fr}}
+.fig{display:grid;gap:6px;min-width:0}
+.cap{font:600 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+canvas{width:100%;height:auto;display:block;border-radius:6px;image-rendering:pixelated;touch-action:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.zoom{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.zoom div{font:600 12px/1 var(--mono);text-align:center;padding:9px 0;border-radius:4px;font-variant-numeric:tabular-nums}
+.rgb{display:flex;gap:14px;flex-wrap:wrap;font:600 14px/1.2 var(--mono)}
+.rgb b{font-weight:600}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:700 14px/1 var(--body);padding:10px 14px;border-radius:6px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+button:hover{background:var(--ink);color:var(--surface)}
+button.on{background:var(--probe);border-color:var(--probe);color:#fff}
+button:focus-visible,svg:focus-visible,canvas:focus-visible{outline:3px solid var(--probe);outline-offset:2px}
+.kernel{display:grid;grid-template-columns:repeat(3,34px);gap:3px}
+.kernel div{font:600 13px/34px var(--mono);text-align:center;border-radius:4px;background:var(--probe-soft);color:var(--ink)}
+.kwrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+svg{max-width:100%;height:auto;display:block}
+.bars{display:grid;gap:7px}
+.bar{display:grid;grid-template-columns:132px 1fr 44px;gap:10px;align-items:center;font-size:14px}
+.bar .t{height:12px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.bar .f{height:100%;background:var(--muted);transition:width .25s}
+.bar.ax .f{background:var(--probe)}
+.bar .v{font:600 13px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.bar.more{color:var(--muted);font-style:italic}
+.result{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.result .big{font:800 clamp(1.5rem,3.4vw,2.1rem)/1 var(--display)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px}
+.simbars{display:grid;gap:8px}
+.simbars .best{font:800 1.6rem/1.1 var(--display)}
+button.rec.on{background:var(--probe);border-color:var(--probe);color:#fff}
+.rec{user-select:none;-webkit-user-select:none;touch-action:none}
+.world{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.world{grid-template-columns:1fr}}
+.world .card{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:6px;background:var(--bg);min-width:0}
+.world h3{font:700 1.05rem/1.2 var(--display);margin:0}
+.world p{margin:0;font-size:.9rem;color:var(--muted)}
+footer{border-top:1px solid var(--line);padding-top:22px;color:var(--muted);font-size:.9rem}
+@media (prefers-reduced-motion:reduce){.bar .f{transition:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">How the Teachable Machine sees</div>
+  <h1>From a photo to a point on a map</h1>
+  <p class="lead">How a webcam frame becomes 1,280 numbers, then a dot that sits near other dots that look alike, and how that one idea runs the whole demo. Every picture on this page works: hover, press play, click the map.</p>
+  <div class="chain"><span>photo</span>→<span>filters</span>→<span>layers</span>→<span>1,280 scores</span>→<span>point · vote</span>→<span>your pins</span>→<span>bigger picture</span></div>
+</header>
+
+<!-- 1 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 1</div>
+    <h2>A photo is a grid of numbers</h2>
+    <p>The computer never sees "a banana". It gets a grid of pixels, and every pixel is three numbers: how much red, green and blue, each from 0 to 255.</p>
+    <p>The demo shrinks each frame to 224 × 224 pixels. That's 150,528 numbers, and none of them says "banana".</p>
+    <p class="say">Hover over the picture to read the numbers under your finger.</p>
+    <p class="note">This toy picture is 24 × 24 so you can see the pixels.</p>
+  </div>
+  <div class="vis">
+    <div class="pair">
+      <div class="fig"><div class="cap">The photo, zoomed in</div><canvas id="img1" width="480" height="480" tabindex="0" aria-label="Pixelated banana. Hover to read pixel values."></canvas></div>
+      <div class="fig">
+        <div class="cap">Brightness around the cursor</div>
+        <div class="zoom" id="zoom"></div>
+        <div class="cap" style="margin-top:8px">The pixel in the middle</div>
+        <div class="rgb" id="rgb"></div>
+        <p class="note" style="margin:0">Shown as one brightness number to keep it readable. Really each pixel carries all three colour numbers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 2</div>
+    <h2>A small filter slides across it</h2>
+    <p>MobileNet looks through a tiny 3 × 3 window. At each spot it multiplies the nine numbers by nine weights and adds them up. A big result means "my pattern is here".</p>
+    <p>This filter's weights look for a change from dark to light, left to right: a vertical edge. Sliding it everywhere gives a new grid, a <b>feature map</b>, that lights up wherever edges are.</p>
+    <p class="say">Press play and watch the edges of the banana appear on the right.</p>
+  </div>
+  <div class="vis">
+    <div class="kwrap">
+      <div class="fig"><div class="cap">The filter's 9 weights</div>
+        <div class="kernel"><div>−1</div><div>0</div><div>+1</div><div>−2</div><div>0</div><div>+2</div><div>−1</div><div>0</div><div>+1</div></div>
+      </div>
+      <div class="controls">
+        <button id="play" class="on" aria-pressed="true">Pause</button>
+        <button id="reset">Start again</button>
+        <span class="mono note" id="pos"></span>
+      </div>
+    </div>
+    <div class="pair">
+      <div class="fig"><div class="cap">Photo + sliding window</div><canvas id="img2" width="480" height="480" aria-label="Photo with a 3 by 3 window sliding across it"></canvas></div>
+      <div class="fig"><div class="cap">Feature map: "edge here?"</div><canvas id="feat" width="480" height="480" aria-label="Feature map filling in where edges are found"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 3</div>
+    <h2>Layers build simple patterns into big ones</h2>
+    <p>Each layer runs many filters, and each layer looks at the previous layer's feature maps, not the photo. So the patterns get bigger and more meaningful as you go deeper.</p>
+    <p>MobileNet v2 stacks about 50 of these layers. Nobody chose the weights by hand. They were learned by training on about 1.2 million labelled photos: every wrong guess nudged the weights a little, millions of times.</p>
+  </div>
+  <div class="vis">
+    <svg viewBox="0 0 640 230" role="img" aria-label="Four stages: edges, then textures, then shapes, then object parts">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+      <g font-family="JetBrains Mono, monospace" font-size="12" fill="var(--muted)" text-anchor="middle">
+        <text x="70" y="22">EARLY</text><text x="570" y="22">DEEP</text>
+      </g>
+      <g fill="none" stroke="var(--line)" stroke-width="1.5">
+        <rect x="10" y="36" width="120" height="120" rx="8" fill="var(--bg)"/>
+        <rect x="170" y="36" width="120" height="120" rx="8" fill="var(--bg)"/>
+        <rect x="330" y="36" width="120" height="120" rx="8" fill="var(--bg)"/>
+        <rect x="490" y="36" width="140" height="120" rx="8" fill="var(--bg)"/>
+      </g>
+      <g stroke="var(--muted)" stroke-width="2" marker-end="url(#ar)"><path d="M134 96h30"/><path d="M294 96h30"/><path d="M454 96h30"/></g>
+      <!-- edges -->
+      <g stroke="var(--probe)" stroke-width="4" stroke-linecap="round">
+        <path d="M34 60v30"/><path d="M58 70h34"/><path d="M40 128l26-22"/><path d="M84 100l22 26"/><path d="M104 56v24"/>
+      </g>
+      <!-- textures -->
+      <g stroke="var(--probe)" stroke-width="2.5" stroke-linecap="round" opacity=".9">
+        <path d="M188 58l20 20M200 52l26 26M214 50l22 22M188 74l18 18"/>
+        <circle cx="258" cy="66" r="3" fill="var(--probe)"/><circle cx="270" cy="78" r="3" fill="var(--probe)"/><circle cx="252" cy="86" r="3" fill="var(--probe)"/><circle cx="266" cy="96" r="3" fill="var(--probe)"/>
+        <path d="M190 118q10-10 20 0t20 0t20 0t20 0" fill="none"/><path d="M190 136q10-10 20 0t20 0t20 0t20 0" fill="none"/>
+      </g>
+      <!-- shapes -->
+      <g fill="none" stroke="var(--probe)" stroke-width="4" stroke-linecap="round">
+        <path d="M346 70q44 70 88 0"/><circle cx="390" cy="122" r="20"/>
+      </g>
+      <!-- parts -->
+      <g stroke-linecap="round">
+        <path d="M508 74q50 66 104 4" fill="none" stroke="var(--banana)" stroke-width="12"/>
+        <path d="M612 78l8-12" stroke="#7A5A2B" stroke-width="6"/>
+        <circle cx="548" cy="126" r="18" fill="var(--apple)"/><path d="M548 108l4-10" stroke="#7A5A2B" stroke-width="4"/>
+      </g>
+      <g font-family="Bricolage Grotesque, Arial, sans-serif" font-weight="700" font-size="17" fill="var(--ink)" text-anchor="middle">
+        <text x="70" y="182">Edges</text><text x="230" y="182">Textures</text><text x="390" y="182">Shapes</text><text x="560" y="182">Object parts</text>
+      </g>
+      <g font-family="Atkinson Hyperlegible, sans-serif" font-size="13" fill="var(--muted)" text-anchor="middle">
+        <text x="70" y="202">lines, colour changes</text><text x="230" y="202">smooth, spotty, ridged</text><text x="390" y="202">curves, circles</text><text x="560" y="202">tip, stalk, peel</text>
+      </g>
+    </svg>
+    <p class="note" style="margin:0">Drawn by hand to show the idea. Real detectors rarely match a neat human word.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 4</div>
+    <h2>1,280 detectors, one score each</h2>
+    <p>The last layer has 1,280 detectors. Each one leaves a small 7 × 7 feature map. MobileNet averages each map into one number: how much of that pattern is in the picture overall.</p>
+    <p>Line up all 1,280 averages and you get the picture's <b>fingerprint</b>, a scorecard. A banana switches on the same detectors every time, so banana scorecards look alike.</p>
+    <p class="say">"Imagine 1,280 judges, each looking for one thing. Two pictures with almost the same scorecards must be similar things."</p>
+  </div>
+  <div class="vis">
+    <div class="pair">
+      <div class="fig"><div class="cap">One detector: 7 × 7 map → average</div><svg id="avg" viewBox="0 0 300 360" role="img" aria-label="A 7 by 7 grid of values averaged into one score"></svg></div>
+      <div class="fig"><div class="cap">The scorecard (12 of 1,280)</div><div class="bars" id="bars"></div></div>
+    </div>
+    <p class="note" style="margin:0">Detector names and scores are made up to show the idea. The scorecard follows the dot you choose on the map below.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 5</div>
+    <h2>The scorecard is a point on a map</h2>
+    <p>Take just two of the scores and use them as map coordinates: <b>long curve</b> across, <b>round outline</b> up. Every recorded banana lands bottom-right, every apple top-left.</p>
+    <p>A new photo becomes a new dot. The demo finds the 10 nearest recorded dots and lets them vote. That's what <span class="mono">k = 10</span> means.</p>
+    <p>The real map has 1,280 directions instead of 2. We can't draw it, but "near" means the same thing: nearly the same scorecard.</p>
+    <p class="say">Click or drag anywhere on the map to place a new photo. Arrow keys work too.</p>
+  </div>
+  <div class="vis">
+    <div class="controls">
+      <button data-p="0.83,0.15">Banana photo</button>
+      <button data-p="0.19,0.83">Apple photo</button>
+      <button data-p="0.5,0.45">Something in between</button>
+    </div>
+    <svg id="map" viewBox="0 0 450 440" tabindex="0" role="img" aria-label="Map of recorded examples. Click to place a new photo and see the 10 nearest vote." style="cursor:crosshair;touch-action:none;width:100%;max-width:520px;margin:0 auto"></svg>
+    <div class="legend"><span><i style="background:var(--banana);border-radius:2px"></i>banana examples</span><span><i style="background:var(--apple);border-radius:50%"></i>apple examples</span><span><i style="background:var(--probe);border-radius:50%"></i>new photo</span><span><i style="border:2px dashed var(--probe)"></i>its 10 nearest</span></div>
+    <div class="result"><span class="big" id="verdict">—</span><span class="mono note" id="tally"></span></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 6</div>
+    <h2>Putting it together at the stand</h2>
+    <p><b>Recording:</b> every frame becomes one dot, pinned on the map with the class name. Three seconds of holding is about 30 dots. That's all the "training" is. MobileNet itself doesn't change.</p>
+    <p><b>Predicting:</b> the live camera frame becomes a new dot many times a second. Its 10 nearest pins vote, and the vote is the bars you see in the demo.</p>
+    <p class="say">"The big network draws the map. Your examples put pins on it. A new photo just asks its neighbours."</p>
+  </div>
+  <div class="vis">
+    <svg viewBox="0 0 640 250" role="img" aria-label="Two routes. Recording: frame, MobileNet, 1,280 scores, pin on the map with a name. Predicting: frame, MobileNet, new dot, 10 nearest pins vote, bars.">
+      <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+      <g font-family="JetBrains Mono, monospace" font-size="12" font-weight="600" fill="var(--muted)"><text x="4" y="20">WHILE YOU HOLD "RECORD"</text><text x="4" y="146">WHILE PREDICTING</text></g>
+      <g fill="var(--bg)" stroke="var(--line)" stroke-width="1.5">
+        <rect x="4" y="32" width="104" height="70" rx="8"/><rect x="140" y="32" width="112" height="70" rx="8"/><rect x="284" y="32" width="112" height="70" rx="8"/>
+        <rect x="4" y="158" width="104" height="70" rx="8"/><rect x="140" y="158" width="112" height="70" rx="8"/><rect x="284" y="158" width="112" height="70" rx="8"/>
+      </g>
+      <rect x="428" y="32" width="208" height="70" rx="8" fill="var(--probe-soft)" stroke="var(--banana)" stroke-width="2"/>
+      <rect x="428" y="158" width="208" height="70" rx="8" fill="var(--probe-soft)" stroke="var(--probe)" stroke-width="2"/>
+      <g stroke="var(--muted)" stroke-width="2" marker-end="url(#ar2)"><path d="M110 67h26"/><path d="M254 67h26"/><path d="M398 67h26"/><path d="M110 193h26"/><path d="M254 193h26"/><path d="M398 193h26"/></g>
+      <!-- frame icons -->
+      <g><rect x="30" y="44" width="52" height="38" rx="4" fill="#D3D8E0"/><path d="M38 60q18 22 36 0" fill="none" stroke="#E6B000" stroke-width="7" stroke-linecap="round"/>
+         <rect x="30" y="170" width="52" height="38" rx="4" fill="#D3D8E0"/><path d="M38 186q18 22 36 0" fill="none" stroke="#E6B000" stroke-width="7" stroke-linecap="round"/></g>
+      <g font-family="Atkinson Hyperlegible, sans-serif" font-size="12" fill="var(--muted)" text-anchor="middle"><text x="56" y="96">camera frame</text><text x="56" y="222">camera frame</text></g>
+      <g font-family="Bricolage Grotesque, Arial, sans-serif" font-weight="700" font-size="16" fill="var(--ink)" text-anchor="middle">
+        <text x="196" y="64">MobileNet</text><text x="196" y="190">MobileNet</text>
+        <text x="340" y="64">1,280 scores</text><text x="340" y="190">1,280 scores</text>
+      </g>
+      <g font-family="Atkinson Hyperlegible, sans-serif" font-size="12" fill="var(--muted)" text-anchor="middle">
+        <text x="196" y="84">same every time</text><text x="196" y="210">same every time</text>
+        <text x="340" y="84">= an address</text><text x="340" y="210">= an address</text>
+      </g>
+      <!-- pin -->
+      <rect x="446" y="52" width="16" height="16" rx="3" fill="var(--banana)"/>
+      <text x="474" y="66" font-family="Bricolage Grotesque, Arial, sans-serif" font-weight="700" font-size="16" fill="var(--ink)">Pin + name</text>
+      <text x="446" y="88" font-family="Atkinson Hyperlegible, sans-serif" font-size="12" fill="var(--muted)">saved as "Banana"</text>
+      <!-- vote -->
+      <circle cx="454" cy="186" r="8" fill="var(--probe)"/>
+      <text x="472" y="191" font-family="Bricolage Grotesque, Arial, sans-serif" font-weight="700" font-size="16" fill="var(--ink)">10 nearest vote</text>
+      <rect x="446" y="198" width="120" height="8" rx="2" fill="var(--banana)"/><rect x="566" y="198" width="52" height="8" rx="2" fill="var(--apple)"/>
+      <text x="446" y="222" font-family="Atkinson Hyperlegible, sans-serif" font-size="12" fill="var(--muted)">= the bars on screen</text>
+    </svg>
+  </div>
+</section>
+
+<section class="step" style="border-top:0;padding-top:0">
+  <div class="txt">
+    <h2 style="font-size:1.35rem">Try the whole thing</h2>
+    <p>The map starts as if a visitor has just recorded about 3 seconds of each fruit. Hold a record button to add pins, drag the blue dot (the live camera) and watch the bars. Reset empties it, like the demo.</p>
+    <p>Then try the tricks from the stand:</p>
+    <ul style="margin:0;padding-left:20px;display:grid;gap:4px">
+      <li><b>Orange</b>: it lands near the apples, so it says Apple. It can't say "I don't know".</li>
+      <li><b>Empty view</b> with no "Nothing" class: it still names a fruit. Record "Nothing" and try again.</li>
+      <li><b>Unbalanced</b>: 100 extra bananas spread out and start winning votes they shouldn't.</li>
+    </ul>
+  </div>
+  <div class="vis">
+    <div class="controls">
+      <button class="rec" data-c="banana">Hold to record Banana</button>
+      <button class="rec" data-c="apple">Hold to record Apple</button>
+      <button class="rec" data-c="nothing">Hold to record Nothing</button>
+    </div>
+    <svg id="sim" viewBox="0 0 450 440" tabindex="0" role="img" aria-label="Empty map. Hold the record buttons to add pins; drag the blue dot to predict." style="cursor:crosshair;touch-action:none;width:100%;max-width:520px;margin:0 auto"></svg>
+    <div class="simbars" id="simbars"></div>
+    <div class="controls">
+      <span class="cap">Tricks:</span>
+      <button data-t="orange">Hold up an orange</button>
+      <button data-t="empty">Empty view</button>
+      <button data-t="unbalance">Add 100 bananas</button>
+      <button data-t="reset">Reset everything</button>
+    </div>
+    <p class="note mono" id="simcount" style="margin:0"></p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="step">
+  <div class="txt">
+    <div class="num">STEP 7</div>
+    <h2>The bigger picture: AI runs on maps like this</h2>
+    <p>Turning things into points, so that similar things sit close, is one of the most common ideas in AI. Only the thing being mapped changes.</p>
+    <p>Big systems learn far better maps from far more data. The demo borrows a small, ready-made map and adds your pins to it.</p>
+    <p class="say">"Same trick as your phone's photo search, just small enough to run in a browser."</p>
+  </div>
+  <div class="vis">
+    <div class="world" id="world"></div>
+    <p class="note" style="margin:0">Sketches to show the idea, not real data.</p>
+  </div>
+</section>
+
+<footer>Built for the Teachable Machine stand. Real numbers in the demo: 224 × 224 input, MobileNet v2, 1,280-number fingerprint, k = 10 nearest neighbours. Pictures on this page are simplified to show the idea.</footer>
+</div>
+
+<script>
+(() => {
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- the toy photo ---------- */
+const W = 24, img = [];
+for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+  const dx = x + .5 - 12, dy = y + .5 + 4, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx) * 180 / Math.PI;
+  const n = ((x * 73 + y * 151) % 17) - 8;
+  let c;
+  if (r >= 14 && r <= 19 && a >= 48 && a <= 132) {
+    if (a < 54 || a > 126) c = [112 + n, 82 + n, 44];
+    else { const t = (r - 14) / 5; c = [252 - 26 * t + n, 214 - 44 * t + n, 78 - 40 * t]; }
+  } else c = [206 + n - y, 212 + n - y, 222 + n - y];
+  img.push(c.map(v => Math.max(0, Math.min(255, Math.round(v)))));
+}
+const px = (x, y) => img[y * W + x];
+const lum = (x, y) => { const [r, g, b] = px(x, y); return Math.round(.299 * r + .587 * g + .114 * b); };
+
+function drawImg(cv) {
+  const g = cv.getContext('2d'), s = cv.width / W;
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const [r, gg, b] = px(x, y); g.fillStyle = `rgb(${r},${gg},${b})`; g.fillRect(x * s, y * s, s, s); }
+}
+
+/* ---------- step 1 ---------- */
+const c1 = document.getElementById('img1'), zoom = document.getElementById('zoom'), rgb = document.getElementById('rgb');
+let hx = 6, hy = 11;
+function step1() {
+  drawImg(c1);
+  const g = c1.getContext('2d'), s = c1.width / W;
+  g.strokeStyle = css('--probe'); g.lineWidth = 3; g.strokeRect((hx - 2) * s, (hy - 2) * s, 5 * s, 5 * s);
+  g.lineWidth = 4; g.strokeRect(hx * s, hy * s, s, s);
+  zoom.innerHTML = '';
+  for (let y = hy - 2; y <= hy + 2; y++) for (let x = hx - 2; x <= hx + 2; x++) {
+    const d = document.createElement('div');
+    if (x < 0 || y < 0 || x >= W || y >= W) { d.textContent = '·'; d.style.color = css('--muted'); }
+    else { const L = lum(x, y); d.textContent = L; d.style.background = `rgb(${L},${L},${L})`; d.style.color = L > 140 ? '#111' : '#fff';
+      if (x === hx && y === hy) d.style.outline = `3px solid ${css('--probe')}`; }
+    zoom.appendChild(d);
+  }
+  const [r, gg, b] = px(hx, hy);
+  rgb.innerHTML = `<span>R <b>${r}</b></span><span>G <b>${gg}</b></span><span>B <b>${b}</b></span><span style="color:var(--muted)">pixel ${hx}, ${hy}</span>`;
+}
+function cellFrom(e, cv) { const r = cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * W), Math.floor((e.clientY - r.top) / r.height * W)]; }
+c1.addEventListener('pointermove', e => { const [x, y] = cellFrom(e, c1); if (x >= 0 && y >= 0 && x < W && y < W && (x !== hx || y !== hy)) { hx = x; hy = y; step1(); } });
+c1.addEventListener('pointerdown', e => { const [x, y] = cellFrom(e, c1); if (x >= 0 && y >= 0 && x < W && y < W) { hx = x; hy = y; step1(); } });
+c1.addEventListener('keydown', e => { const m = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]; if (!m) return; e.preventDefault(); hx = Math.max(0, Math.min(W - 1, hx + m[0])); hy = Math.max(0, Math.min(W - 1, hy + m[1])); step1(); });
+
+/* ---------- step 2: real convolution ---------- */
+const K = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], F = W - 2, fm = [];
+let fmax = 0;
+for (let y = 1; y < W - 1; y++) for (let x = 1; x < W - 1; x++) {
+  let s = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) s += K[j + 1][i + 1] * lum(x + i, y + j);
+  const v = Math.abs(s); fm.push(v); fmax = Math.max(fmax, v);
+}
+const fmn = fm.map(v => v / fmax);
+const c2 = document.getElementById('img2'), cf = document.getElementById('feat'), pos = document.getElementById('pos');
+const playBtn = document.getElementById('play');
+let k = reduce ? F * F - 1 : 0, playing = !reduce, timer = null;
+function mix(a, b, t) { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; }
+function step2() {
+  drawImg(c2);
+  const s = c2.width / W, g = c2.getContext('2d'), fx = k % F + 1, fy = Math.floor(k / F) + 1;
+  g.fillStyle = css('--probe-soft'); g.fillRect((fx - 1) * s, (fy - 1) * s, 3 * s, 3 * s);
+  g.strokeStyle = css('--probe'); g.lineWidth = 4; g.strokeRect((fx - 1) * s, (fy - 1) * s, 3 * s, 3 * s);
+  const h = cf.getContext('2d'), surf = css('--bg'), pr = css('--probe');
+  h.fillStyle = css('--surface'); h.fillRect(0, 0, cf.width, cf.height);
+  for (let i = 0; i < F * F; i++) {
+    const x = i % F + 1, y = Math.floor(i / F) + 1;
+    h.fillStyle = i <= k ? mix(surf, pr, Math.pow(fmn[i], .8)) : surf;
+    h.fillRect(x * s + 1, y * s + 1, s - 2, s - 2);
+  }
+  h.strokeStyle = css('--ink'); h.lineWidth = 3; h.strokeRect(fx * s, fy * s, s, s);
+  pos.textContent = `window ${k + 1} of ${F * F} · result ${Math.round(fm[k])}`;
+}
+function tick() { k = (k + 1) % (F * F); step2(); if (k === F * F - 1) stop(); }
+function start() { playing = true; playBtn.textContent = 'Pause'; playBtn.classList.add('on'); playBtn.setAttribute('aria-pressed', 'true'); clearInterval(timer); timer = setInterval(tick, 28); }
+function stop() { playing = false; playBtn.textContent = 'Play'; playBtn.classList.remove('on'); playBtn.setAttribute('aria-pressed', 'false'); clearInterval(timer); }
+playBtn.onclick = () => { if (playing) stop(); else { if (k === F * F - 1) k = -1; start(); } };
+document.getElementById('reset').onclick = () => { k = 0; step2(); start(); };
+
+/* ---------- step 4: 7x7 average ---------- */
+const g7 = [];
+for (let j = 0; j < 7; j++) for (let i = 0; i < 7; i++) {
+  let s = 0, n = 0;
+  for (let y = Math.floor(j * F / 7); y < Math.floor((j + 1) * F / 7); y++) for (let x = Math.floor(i * F / 7); x < Math.floor((i + 1) * F / 7); x++) { s += fmn[y * F + x]; n++; }
+  g7.push(s / n);
+}
+const avgVal = g7.reduce((a, b) => a + b, 0) / 49;
+function drawAvg() {
+  const svg = document.getElementById('avg'), surf = css('--bg'), pr = css('--probe');
+  let h = '';
+  g7.forEach((v, i) => { const x = 10 + (i % 7) * 40, y = 10 + Math.floor(i / 7) * 40, t = Math.min(1, v * 2.2);
+    h += `<rect x="${x}" y="${y}" width="38" height="38" rx="3" fill="${mix(surf, pr, t)}"/><text x="${x + 19}" y="${y + 24}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600" fill="${t > .55 ? '#fff' : css('--ink')}">${v.toFixed(2)}</text>`; });
+  h += `<path d="M150 296v22" stroke="${css('--muted')}" stroke-width="2"/><path d="M143 312l7 9l7-9" fill="none" stroke="${css('--muted')}" stroke-width="2"/>`;
+  h += `<text x="150" y="350" text-anchor="middle" font-family="Bricolage Grotesque, Arial, sans-serif" font-weight="800" font-size="24" fill="${css('--ink')}">average = ${avgVal.toFixed(2)}</text>`;
+  svg.innerHTML = h;
+}
+
+/* ---------- detectors + map ---------- */
+const DET = [
+  ['Long curve', .86, .12, true], ['Round outline', .14, .84, true],
+  ['Smooth yellow', .82, .10], ['Red-green skin', .06, .78], ['Brown tip', .55, .04], ['Small stalk', .30, .62],
+  ['Shiny highlight', .22, .58], ['Straight edge', .12, .08], ['Fuzzy texture', .05, .07], ['Metal sheen', .04, .05],
+  ['Loop handle', .03, .06], ['Printed text', .02, .03]];
+const barsEl = document.getElementById('bars');
+barsEl.innerHTML = DET.map(d => `<div class="bar${d[3] ? ' ax' : ''}"><span>${d[0]}</span><div class="t"><div class="f"></div></div><span class="v"></span></div>`).join('') + '<div class="bar more"><span>+ 1,268 more</span><span></span><span></span></div>';
+const fills = [...barsEl.querySelectorAll('.f')], vals = [...barsEl.querySelectorAll('.v')];
+
+let seed = 7; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(2 * Math.PI * rnd());
+const cl = v => Math.max(.03, Math.min(.97, v));
+const pts = [];
+for (let i = 0; i < 26; i++) pts.push({ x: cl(.79 + gauss() * .085), y: cl(.19 + gauss() * .085), c: 'banana' });
+for (let i = 0; i < 26; i++) pts.push({ x: cl(.23 + gauss() * .085), y: cl(.79 + gauss() * .085), c: 'apple' });
+const L = 70, R = 430, T = 24, B = 384, sx = v => L + v * (R - L), sy = v => B - v * (B - T);
+let P = { x: .5, y: .45 };
+const map = document.getElementById('map');
+
+function drawMap() {
+  const ink = css('--ink'), mut = css('--muted'), line = css('--line'), ban = css('--banana'), app = css('--apple'), pr = css('--probe');
+  const near = pts.map(p => ({ p, d: Math.hypot(p.x - P.x, p.y - P.y) })).sort((a, b) => a.d - b.d).slice(0, 10);
+  const rad = near[9].d * (R - L);
+  let h = `<rect x="${L}" y="${T}" width="${R - L}" height="${B - T}" fill="none" stroke="${line}"/>`;
+  for (let t = 0; t <= 1.001; t += .25) h += `<path d="M${sx(t)} ${T}V${B}M${L} ${sy(t)}H${R}" stroke="${line}" stroke-width=".7"/><text x="${sx(t)}" y="${B + 18}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="${mut}">${t.toFixed(2)}</text><text x="${L - 8}" y="${sy(t) + 4}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="${mut}">${t.toFixed(2)}</text>`;
+  h += `<text x="${(L + R) / 2}" y="${B + 44}" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" font-weight="700" font-size="14" fill="${ink}">"Long curve" score →</text>`;
+  h += `<text transform="translate(18 ${(T + B) / 2}) rotate(-90)" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" font-weight="700" font-size="14" fill="${ink}">"Round outline" score →</text>`;
+  h += `<circle cx="${sx(P.x)}" cy="${sy(P.y)}" r="${rad + 9}" fill="${css('--probe-soft')}" stroke="${pr}" stroke-width="2" stroke-dasharray="7 6"/>`;
+  near.forEach(n => h += `<path d="M${sx(P.x)} ${sy(P.y)}L${sx(n.p.x)} ${sy(n.p.y)}" stroke="${pr}" stroke-width="1.3" opacity=".7"/>`);
+  const inNear = new Set(near.map(n => n.p));
+  pts.forEach(p => { const o = inNear.has(p) ? 1 : .45, X = sx(p.x), Y = sy(p.y);
+    h += p.c === 'banana' ? `<rect x="${X - 6}" y="${Y - 6}" width="12" height="12" rx="2" fill="${ban}" opacity="${o}"/>` : `<circle cx="${X}" cy="${Y}" r="6.5" fill="${app}" opacity="${o}"/>`; });
+  h += `<circle cx="${sx(P.x)}" cy="${sy(P.y)}" r="10" fill="${pr}" stroke="${css('--surface')}" stroke-width="3"/>`;
+  map.innerHTML = h;
+  const nb = near.filter(n => n.p.c === 'banana').length, na = 10 - nb, win = nb >= na ? 'Banana' : 'Apple', pct = Math.max(nb, na) * 10;
+  document.getElementById('verdict').textContent = `${win} · ${pct}%`;
+  document.getElementById('verdict').style.color = win === 'Banana' ? ban : app;
+  document.getElementById('tally').textContent = `${nb} banana${nb === 1 ? '' : 's'} + ${na} apple${na === 1 ? '' : 's'} among the 10 nearest`;
+  const dB = Math.hypot(P.x - .79, P.y - .19), dA = Math.hypot(P.x - .23, P.y - .79), b = dA / (dA + dB);
+  DET.forEach((d, i) => { const v = i === 0 ? P.x : i === 1 ? P.y : b * d[1] + (1 - b) * d[2]; fills[i].style.width = (v * 100).toFixed(0) + '%'; vals[i].textContent = v.toFixed(2); });
+}
+function setFrom(e) { const m = map.getScreenCTM(); if (!m) return; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+  P = { x: cl((p.x - L) / (R - L)), y: cl((B - p.y) / (B - T)) }; drawMap(); }
+let drag = false;
+map.addEventListener('pointerdown', e => { drag = true; map.setPointerCapture(e.pointerId); setFrom(e); });
+map.addEventListener('pointermove', e => { if (drag) setFrom(e); });
+map.addEventListener('pointerup', () => drag = false);
+map.addEventListener('keydown', e => { const m = { ArrowLeft: [-.03, 0], ArrowRight: [.03, 0], ArrowUp: [0, .03], ArrowDown: [0, -.03] }[e.key]; if (!m) return; e.preventDefault(); P = { x: cl(P.x + m[0]), y: cl(P.y + m[1]) }; drawMap(); });
+document.querySelectorAll('[data-p]').forEach(bn => bn.onclick = () => { const [x, y] = bn.dataset.p.split(',').map(Number); P = { x, y }; drawMap(); });
+
+/* ---------- step 6: the whole loop ---------- */
+const CEN = { banana: [.79, .19], apple: [.23, .79], nothing: [.13, .13] };
+const NAME = { banana: 'Banana', apple: 'Apple', nothing: 'Nothing' };
+const col = c => c === 'banana' ? css('--banana') : c === 'apple' ? css('--apple') : css('--muted');
+let pins = [], Q = { x: .55, y: .4 };
+function seedSim() { pins = []; for (let i = 0; i < 30; i++) { addPin('banana'); addPin('apple'); } }
+const sim = document.getElementById('sim');
+function addPin(c, sd = .07) { const [cx, cy] = CEN[c]; pins.push({ x: cl(cx + gauss() * sd), y: cl(cy + gauss() * sd), c }); }
+function drawSim() {
+  const mut = css('--muted'), line = css('--line'), pr = css('--probe');
+  let h = `<rect x="${L}" y="${T}" width="${R - L}" height="${B - T}" fill="none" stroke="${line}"/>`;
+  for (let t = 0; t <= 1.001; t += .25) h += `<path d="M${sx(t)} ${T}V${B}M${L} ${sy(t)}H${R}" stroke="${line}" stroke-width=".7"/>`;
+  h += `<text x="${(L + R) / 2}" y="${B + 30}" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" font-weight="700" font-size="14" fill="${css('--ink')}">"Long curve" score →</text>`;
+  h += `<text transform="translate(40 ${(T + B) / 2}) rotate(-90)" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" font-weight="700" font-size="14" fill="${css('--ink')}">"Round outline" score →</text>`;
+  const k = Math.min(10, pins.length);
+  const near = pins.map(p => ({ p, d: Math.hypot(p.x - Q.x, p.y - Q.y) })).sort((a, b) => a.d - b.d).slice(0, k);
+  if (k) { h += `<circle cx="${sx(Q.x)}" cy="${sy(Q.y)}" r="${near[k - 1].d * (R - L) + 9}" fill="${css('--probe-soft')}" stroke="${pr}" stroke-width="2" stroke-dasharray="7 6"/>`;
+    near.forEach(n => h += `<path d="M${sx(Q.x)} ${sy(Q.y)}L${sx(n.p.x)} ${sy(n.p.y)}" stroke="${pr}" stroke-width="1.3" opacity=".7"/>`); }
+  else h += `<text x="${(L + R) / 2}" y="${(T + B) / 2 - 30}" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" font-size="15" fill="${mut}">No pins yet. Hold a record button.</text>`;
+  const inNear = new Set(near.map(n => n.p));
+  pins.forEach(p => { const o = inNear.has(p) ? 1 : .45, X = sx(p.x), Y = sy(p.y), c = col(p.c);
+    h += p.c === 'banana' ? `<rect x="${X - 5}" y="${Y - 5}" width="10" height="10" rx="2" fill="${c}" opacity="${o}"/>`
+      : p.c === 'apple' ? `<circle cx="${X}" cy="${Y}" r="5.5" fill="${c}" opacity="${o}"/>`
+      : `<path d="M${X} ${Y - 7}L${X + 7} ${Y}L${X} ${Y + 7}L${X - 7} ${Y}z" fill="${c}" opacity="${o}"/>`; });
+  h += `<circle cx="${sx(Q.x)}" cy="${sy(Q.y)}" r="10" fill="${pr}" stroke="${css('--surface')}" stroke-width="3"/>`;
+  h += `<text x="${sx(Q.x) + 14}" y="${sy(Q.y) - 12}" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600" fill="${pr}">live camera</text>`;
+  sim.innerHTML = h;
+  const classes = [...new Set(pins.map(p => p.c))];
+  const box = document.getElementById('simbars');
+  if (classes.length < 2) box.innerHTML = `<p class="note" style="margin:0">Record at least two classes to start predicting.</p>`;
+  else {
+    const votes = Object.fromEntries(classes.map(c => [c, near.filter(n => n.p.c === c).length / k]));
+    const best = classes.reduce((a, b) => votes[b] > votes[a] ? b : a);
+    box.innerHTML = `<div><span class="cap">Best match</span><div class="best" style="color:${col(best)}">${NAME[best]}</div></div>` +
+      ['banana', 'apple', 'nothing'].filter(c => classes.includes(c)).map(c => `<div class="bar"><span>${NAME[c]}</span><div class="t"><div class="f" style="width:${votes[c] * 100}%;background:${col(c)}"></div></div><span class="v">${Math.round(votes[c] * 100)}%</span></div>`).join('');
+  }
+  const cnt = c => pins.filter(p => p.c === c).length;
+  document.getElementById('simcount').textContent = `Pins on the map: ${cnt('banana')} banana · ${cnt('apple')} apple · ${cnt('nothing')} nothing`;
+}
+document.querySelectorAll('.rec').forEach(btn => {
+  let tm = null;
+  const go = e => { e.preventDefault(); if (tm) return; btn.classList.add('on'); addPin(btn.dataset.c); drawSim(); tm = setInterval(() => { addPin(btn.dataset.c); drawSim(); }, 100); };
+  const end = () => { clearInterval(tm); tm = null; btn.classList.remove('on'); };
+  btn.addEventListener('pointerdown', go); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, end));
+  btn.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) go(e); });
+  btn.addEventListener('keyup', end);
+});
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  const t = b.dataset.t;
+  if (t === 'orange') Q = { x: .36, y: .64 };
+  if (t === 'empty') Q = { x: .13, y: .13 };
+  if (t === 'unbalance') for (let i = 0; i < 100; i++) addPin('banana', .22);
+  if (t === 'reset') { pins = []; Q = { x: .55, y: .4 }; }
+  drawSim();
+});
+function setSim(e) { const m = sim.getScreenCTM(); if (!m) return; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); Q = { x: cl((p.x - L) / (R - L)), y: cl((B - p.y) / (B - T)) }; drawSim(); }
+let sdrag = false;
+sim.addEventListener('pointerdown', e => { sdrag = true; sim.setPointerCapture(e.pointerId); setSim(e); });
+sim.addEventListener('pointermove', e => { if (sdrag) setSim(e); });
+sim.addEventListener('pointerup', () => sdrag = false);
+sim.addEventListener('keydown', e => { const m = { ArrowLeft: [-.03, 0], ArrowRight: [.03, 0], ArrowUp: [0, .03], ArrowDown: [0, -.03] }[e.key]; if (!m) return; e.preventDefault(); Q = { x: cl(Q.x + m[0]), y: cl(Q.y + m[1]) }; drawSim(); });
+
+/* ---------- step 7: other maps ---------- */
+const WORLD = [
+  { t: 'Phone photo search', d: 'You type "dog". Photos near the "dog" area come back.', groups: [['dogs', .25, .7, 'q'], ['beaches', .75, .72], ['food', .55, .25]] },
+  { t: 'Face unlock', d: 'Your face lands close to your saved face, so it unlocks. A stranger lands far away.', groups: [['you', .3, .45, 'q'], ['stranger', .78, .7]], tight: true },
+  { t: 'Music & film suggestions', d: 'Things near what you already like get suggested next.', groups: [['calm songs', .28, .3], ['dance songs', .72, .68, 'q'], ['podcasts', .75, .22]] },
+  { t: 'Chatbots & words', d: 'Words become points too. "Car" sits near "vehicle", far from "banana".', groups: [['car · vehicle · truck', .3, .68, 'q'], ['banana · apple · pear', .7, .3]] }];
+function drawWorld() {
+  const el = document.getElementById('world'), mut = css('--muted'), pr = css('--probe');
+  const pal = [css('--apple'), css('--banana'), mut];
+  let s2 = 11; const r2 = () => { s2 = (s2 * 1664525 + 1013904223) >>> 0; return s2 / 4294967296; };
+  const g2 = () => Math.sqrt(-2 * Math.log(r2() + 1e-9)) * Math.cos(2 * Math.PI * r2());
+  el.innerHTML = WORLD.map(w => {
+    let h = `<svg viewBox="0 0 220 140" role="img" aria-label="${w.t}: points grouped by similarity"><rect x="1" y="1" width="218" height="138" rx="6" fill="${css('--surface')}" stroke="${css('--line')}"/>`;
+    w.groups.forEach((g, i) => {
+      const [name, gx, gy, q] = g, cx = 10 + gx * 200, cy = 130 - gy * 120, sd = w.tight && i === 0 ? 5 : 11;
+      for (let j = 0; j < (w.tight && i === 1 ? 1 : 9); j++) h += `<circle cx="${cx + g2() * sd}" cy="${cy + g2() * sd * .7}" r="3.6" fill="${pal[i % 3]}" opacity=".85"/>`;
+      if (q) h += `<circle cx="${cx + 18}" cy="${cy + 4}" r="5.5" fill="${pr}" stroke="${css('--surface')}" stroke-width="2"/>`;
+      const anchor = cx < 60 ? 'start' : cx > 160 ? 'end' : 'middle', lx = anchor === 'start' ? 10 : anchor === 'end' ? 210 : cx;
+      h += `<text x="${lx}" y="${cy - 18}" text-anchor="${anchor}" font-family="Atkinson Hyperlegible, sans-serif" font-size="11.5" font-weight="700" fill="${css('--ink')}">${name}</text>`;
+    });
+    return `<div class="card"><h3>${w.t}</h3>${h}</svg><p>${w.d}</p></div>`;
+  }).join('');
+}
+
+seedSim();
+function all() { step1(); step2(); drawAvg(); drawMap(); drawSim(); drawWorld(); }
+all();
+if (playing) start();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', all);
+new MutationObserver(all).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+document.fonts && document.fonts.ready.then(() => { drawAvg(); drawMap(); });
+})();
+</script>
+
+</body></html>
